@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'search_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -174,6 +175,18 @@ class _MovieListPageState extends State<MovieListPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Список фильмов'),
+        actions: [
+          // ЛАБА 5: переход на экран поиска сериалов через API
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SearchPage()),
+              );
+            },
+          ),
+        ],
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(12),
@@ -211,7 +224,7 @@ class _MovieListPageState extends State<MovieListPage> {
                                 ),
                               ),
                             ),
-                            // Кнопка лайка — отдельная от общего onTap карточки,
+                            // Кнопка лайка - отдельная от общего onTap карточки,
                             // поэтому нажатие на неё не открывает детали
                             IconButton(
                               icon: Icon(
