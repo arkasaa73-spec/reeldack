@@ -1,54 +1,65 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'show.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'search_bloc.dart';
 import 'show_repository.dart';
 
 // ==================================================
-// ЛАБА 5: экран поиска
+// ЛАБА 6: экран теперь "глупый" - вся логика в SearchBloc,
+// сам виджет только отправляет события и рисует состояния
 // ==================================================
 
-class SearchPage extends StatefulWidget {
+class SearchPage extends StatelessWidget {
   const SearchPage({super.key});
 
   @override
-  State<SearchPage> createState() => _SearchPageState();
+  Widget build(BuildContext context) {
+    // BlocProvider создаёт BLoC и делает его доступным
+    // для всех виджетов ниже по дереву через context.read/watch
+    return BlocProvider(
+      create: (_) => SearchBloc(OmdbShowRepository()),
+      child: const _SearchView(),
+    );
+  }
 }
 
-class _SearchPageState extends State<SearchPage> {
-  // Зависим от интерфейса ShowRepository, а не от конкретного
-  // TvMazeShowRepository — так в будущем источник данных можно
-  // подменить одной строкой.
-  final ShowRepository _repository = OmdbShowRepository();
+class _SearchView extends StatefulWidget {
+  const _SearchView();
+
+  @override
+  State<_SearchView> createState() => _SearchViewState();
+}
+
+class _SearchViewState extends State<_SearchView> {
   final TextEditingController _controller = TextEditingController();
+  Timer? _debounceTimer;
+  String _lastQuery = '';
 
-  List<Show> _results = [];
-  bool _isLoading = false;
-  String? _errorMessage;
-
-  Future<void> _search() async {
-    final query = _controller.text.trim();
-    if (query.isEmpty) return;
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+  // ЛАБА 6: Debounce - не ищем на каждую введённую букву,
+  // а ждём паузу в 500 мс. Если за это время пользователь
+  // напечатал ещё что-то - старый таймер отменяется, и отсчёт
+  // начинается заново. Запрос улетает только когда человек
+  // ненадолго остановился печатать.
+  void _onQueryChanged(String query) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      _lastQuery = query;
+      context.read<SearchBloc>().add(SearchRequested(query));
     });
+  }
 
-    try {
-      final results = await _repository.search(query);
-      setState(() {
-        _results = results;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Не удалось загрузить данные: $e';
-        _isLoading = false;
-      });
+  // ЛАБА 6: обновление страницы по жесту "потянуть вниз"
+  Future<void> _onRefresh() async {
+    if (_lastQuery.isNotEmpty) {
+      context.read<SearchBloc>().add(SearchRequested(_lastQuery));
     }
+    // небольшая пауза, чтобы анимация обновления не мигала мгновенно
+    await Future.delayed(const Duration(milliseconds: 400));
   }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -61,60 +72,61 @@ class _SearchPageState extends State<SearchPage> {
         children: [
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: 'Введите название фильма',
-                      border: OutlineInputBorder(),
-                    ),
-                    onSubmitted: (_) => _search(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: _search,
-                  child: const Icon(Icons.search),
-                ),
-              ],
-            ),
-          ),
-          if (_isLoading) const Padding(
-            padding: EdgeInsets.all(16),
-            child: CircularProgressIndicator(),
-          ),
-          if (_errorMessage != null)
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(
-                _errorMessage!,
-                style: const TextStyle(color: Colors.red),
+            child: TextField(
+              controller: _controller,
+              decoration: const InputDecoration(
+                hintText: 'Введите название фильма',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.search),
               ),
+              onChanged: _onQueryChanged,
             ),
+          ),
           Expanded(
-            child: ListView.builder(
-              itemCount: _results.length,
-              itemBuilder: (context, index) {
-                final show = _results[index];
-                return ListTile(
-                  leading: show.imageUrl != null
-                      ? Image.network(
-                          show.imageUrl!,
-                          width: 50,
-                          fit: BoxFit.cover,
-                        )
-                      : const Icon(Icons.tv, size: 40),
-                  title: Text(show.name),
-                  subtitle: Text(
-                    show.summary,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+            // BlocBuilder перерисовывает всё, что внутри, каждый раз,
+            // когда SearchBloc публикует новое состояние
+            child: BlocBuilder<SearchBloc, SearchState>(
+              builder: (context, state) {
+                if (state is SearchInitial) {
+                  return const Center(
+                    child: Text('Начните вводить название фильма'),
+                  );
+                }
+                if (state is SearchLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (state is SearchError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        state.message,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  );
+                }
+
+                final results = (state as SearchLoaded).results;
+                return RefreshIndicator(
+                  onRefresh: _onRefresh,
+                  child: ListView.builder(
+                    itemCount: results.length,
+                    itemBuilder: (context, index) {
+                      final show = results[index];
+                      return ListTile(
+                        leading: show.imageUrl != null
+                            ? Image.network(
+                                show.imageUrl!,
+                                width: 50,
+                                fit: BoxFit.cover,
+                              )
+                            : const Icon(Icons.movie, size: 40),
+                        title: Text(show.name),
+                        subtitle: Text(show.summary),
+                      );
+                    },
                   ),
-                  trailing: show.rating != null
-                      ? Text('⭐ ${show.rating}')
-                      : null,
                 );
               },
             ),
