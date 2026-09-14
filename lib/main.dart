@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'app_localizations.dart';
 import 'search_page.dart';
 
 void main() {
@@ -108,19 +111,47 @@ final List<Movie> movies = [
   ),
 ];
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  // ЛАБА 7: язык храним прямо тут, а не берём из настроек телефона
+  Locale _locale = const Locale('ru');
+
+  void _toggleLanguage() {
+    setState(() {
+      _locale = _locale.languageCode == 'ru'
+          ? const Locale('en')
+          : const Locale('ru');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Лаба 3-7 — Фильмы',
+      // ЛАБА 7: подключаем локализацию
+      locale: _locale, // явно задаём язык вместо того, чтобы брать из системы
+      localizationsDelegates: const [
+        AppLocalizationsDelegate(),
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('ru'),
+        Locale('en'),
+      ],
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MovieListPage(),
+      home: MovieListPage(onToggleLanguage: _toggleLanguage),
     );
   }
 }
@@ -133,27 +164,55 @@ class MyApp extends StatelessWidget {
 // Раньше был StatelessWidget, теперь StatefulWidget — потому что
 // при нажатии на лайк нужно менять данные и перерисовывать экран.
 class MovieListPage extends StatefulWidget {
-  const MovieListPage({super.key});
+  final VoidCallback onToggleLanguage;
+
+  const MovieListPage({super.key, required this.onToggleLanguage});
 
   @override
   State<MovieListPage> createState() => _MovieListPageState();
 }
 
+
 class _MovieListPageState extends State<MovieListPage> {
+  @override
+  void initState() {
+    super.initState();
+    _loadLikes(); // ЛАБА 7: подгружаем сохранённые лайки при запуске
+  }
+
+  // ЛАБА 7: SharedPreferences — простое хранилище "ключ-значение"
+  // прямо на устройстве. Данные остаются даже после закрытия
+  // приложения (в отличие от обычных переменных в памяти).
+  Future<void> _loadLikes() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      for (final movie in movies) {
+        movie.isLiked = prefs.getBool('liked_${movie.title}') ?? false;
+      }
+    });
+  }
+
+  Future<void> _saveLike(Movie movie) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('liked_${movie.title}', movie.isLiked);
+  }
+
   // Переключить лайк у конкретного фильма
   void _toggleLike(Movie movie) {
     setState(() {
       // setState говорит Flutter: "данные изменились, перерисуй экран"
       movie.isLiked = !movie.isLiked;
     });
+    _saveLike(movie); // сохраняем новое значение на диск
 
     // Показываем всплывающее уведомление внизу экрана
+    final loc = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           movie.isLiked
-              ? 'Вам понравился фильм "${movie.title}"'
-              : 'Лайк убран с фильма "${movie.title}"',
+              ? '${loc.likedMovie} "${movie.title}"'
+              : '${loc.unlikedMovie} "${movie.title}"',
         ),
         duration: const Duration(seconds: 1),
       ),
@@ -174,8 +233,13 @@ class _MovieListPageState extends State<MovieListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Список фильмов'),
+        title: Text(AppLocalizations.of(context).movieListTitle),
         actions: [
+          // ЛАБА 7: кнопка переключения языка
+          IconButton(
+            icon: const Icon(Icons.language),
+            onPressed: widget.onToggleLanguage,
+          ),
           // ЛАБА 5: переход на экран поиска сериалов через API
           IconButton(
             icon: const Icon(Icons.search),
@@ -224,7 +288,7 @@ class _MovieListPageState extends State<MovieListPage> {
                                 ),
                               ),
                             ),
-                            // Кнопка лайка - отдельная от общего onTap карточки,
+                            // Кнопка лайка — отдельная от общего onTap карточки,
                             // поэтому нажатие на неё не открывает детали
                             IconButton(
                               icon: Icon(

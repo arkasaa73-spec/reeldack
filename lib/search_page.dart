@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'app_localizations.dart';
 import 'search_bloc.dart';
 import 'show_repository.dart';
 
 // ==================================================
-// ЛАБА 6: экран теперь "глупый" - вся логика в SearchBloc,
+// ЛАБА 6: экран теперь "глупый" — вся логика в SearchBloc,
 // сам виджет только отправляет события и рисует состояния
 // ==================================================
 
@@ -35,9 +36,9 @@ class _SearchViewState extends State<_SearchView> {
   Timer? _debounceTimer;
   String _lastQuery = '';
 
-  // ЛАБА 6: Debounce - не ищем на каждую введённую букву,
+  // ЛАБА 6: Debounce — не ищем на каждую введённую букву,
   // а ждём паузу в 500 мс. Если за это время пользователь
-  // напечатал ещё что-то - старый таймер отменяется, и отсчёт
+  // напечатал ещё что-то — старый таймер отменяется, и отсчёт
   // начинается заново. Запрос улетает только когда человек
   // ненадолго остановился печатать.
   void _onQueryChanged(String query) {
@@ -67,17 +68,17 @@ class _SearchViewState extends State<_SearchView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Поиск фильмов')),
+      appBar: AppBar(title: Text(AppLocalizations.of(context).searchTitle)),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(12),
             child: TextField(
               controller: _controller,
-              decoration: const InputDecoration(
-                hintText: 'Введите название фильма',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.search),
+              decoration: InputDecoration(
+                hintText: AppLocalizations.of(context).searchHint,
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.search),
               ),
               onChanged: _onQueryChanged,
             ),
@@ -88,8 +89,8 @@ class _SearchViewState extends State<_SearchView> {
             child: BlocBuilder<SearchBloc, SearchState>(
               builder: (context, state) {
                 if (state is SearchInitial) {
-                  return const Center(
-                    child: Text('Начните вводить название фильма'),
+                  return Center(
+                    child: Text(AppLocalizations.of(context).initialSearchHint),
                   );
                 }
                 if (state is SearchLoading) {
