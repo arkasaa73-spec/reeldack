@@ -26,7 +26,7 @@ https://www.omdbapi.com/?s=QUERY&apikey=API_KEY
 
 Полученный JSON преобразуется сначала в DTO-модель, а затем в модель фильма Show.
 
-Работа с API реализована в show_repository.dart через OmdbShowRepository. (GitHub)
+Работа с API реализована в show_repository.dart через OmdbShowRepository.
 
 🛠 Технологии
 
@@ -37,7 +37,7 @@ https://www.omdbapi.com/?s=QUERY&apikey=API_KEY
 * SharedPreferences — локальное хранение состояния лайков
 * Flutter Localizations — поддержка русского и английского языков
 
-Основные зависимости проекта указаны в pubspec.yaml. (GitHub)
+Основные зависимости проекта указаны в pubspec.yaml.
 
 📱 Основные экраны
 
@@ -55,7 +55,7 @@ https://www.omdbapi.com/?s=QUERY&apikey=API_KEY
 
 💾 Локальное хранение
 
-Для сохранения лайков используется SharedPreferences. Состояние каждого фильма сохраняется на устройстве и восстанавливается после повторного запуска приложения. (GitHub)
+Для сохранения лайков используется SharedPreferences. Состояние каждого фильма сохраняется на устройстве и восстанавливается после повторного запуска приложения.
 
 🌍 Локализация
 
@@ -64,7 +64,7 @@ https://www.omdbapi.com/?s=QUERY&apikey=API_KEY
 * 🇷🇺 Русский
 * 🇬🇧 English
 
-Переключение языка доступно непосредственно из интерфейса приложения. (GitHub)
+Переключение языка доступно непосредственно из интерфейса приложения.
 
 📁 Структура проекта
 
@@ -79,4 +79,4 @@ lib/
 assets/
 └── images/
 
-Проект также содержит платформенные директории Flutter для Android, iOS, Web, Windows, macOS и Linux. (GitHub)
+Проект также содержит платформенные директории Flutter для Android, iOS, Web, Windows, macOS и Linux. 
